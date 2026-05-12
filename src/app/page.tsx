@@ -568,25 +568,19 @@ function ResultView({
 }
 
 function MtvproCTA() {
-  const url = process.env.NEXT_PUBLIC_MTVPRO_URL || "#";
-  const isLive = url !== "#";
   return (
-    <aside className="mt-12 rounded-2xl bg-neutral-50 p-6">
-      <p className="text-xs text-neutral-500">継続して測りたい人は</p>
-      <p className="mt-1 text-base font-semibold text-neutral-900">
-        Meeting TimeValue Pro
+    <aside className="mt-12 rounded-2xl border border-neutral-200 p-8 text-center">
+      <p className="text-base font-semibold text-neutral-900">
+        Meeting TimeValue Pro 開発中
       </p>
-      <p className="mt-1 text-xs text-neutral-500">
-        自動でMTGコストを集計・分析
+      <p className="mt-4 text-sm leading-relaxed text-neutral-600">
+        このパイロット版は本格版の試作です。
+        <br />
+        正式版では会議の自動測定・集計・改善提案まで全自動化します。
       </p>
-      <a
-        href={url}
-        {...(isLive ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-        className="mt-4 inline-flex items-center gap-1 text-xs font-semibold text-orange-600 transition hover:text-orange-700"
-      >
-        詳しく見る
-        <span aria-hidden>→</span>
-      </a>
+      <p className="mt-5 text-xs font-medium tracking-wide text-orange-600">
+        近日リリース予定
+      </p>
     </aside>
   );
 }
