@@ -1,6 +1,12 @@
-# 会議の値段 (Meeting Cost Counter)
+# Meeting TimeValue 〜 会議の値段、見えてますか?
 
+[Meeting TimeValue Pro (MTVPRO)](https://github.com/bozzy-star/MTVPRO) のパイロット版。
 人数 × 時給 × 経過時間 で「いま会議で燃えているお金」をリアルタイム表示するシングルページLP。
+
+## 環境変数 (`.env.example` 参照)
+
+- `NEXT_PUBLIC_MTVPRO_URL` ... フッター/結果ページCTAのリンク先
+- `NEXT_PUBLIC_CF_ANALYTICS_TOKEN` ... Cloudflare Web Analytics トークン (未設定時はビーコン読込なし)
 
 ## 開発
 

@@ -189,7 +189,7 @@ export async function GET(req: NextRequest) {
           }}
         >
           <div style={{ display: "flex", color: "#fafafa", fontWeight: 700 }}>
-            会議の値段
+            Meeting TimeValue
           </div>
           <div style={{ display: "flex" }}>#会議の値段</div>
         </div>

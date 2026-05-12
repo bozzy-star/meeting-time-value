@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { track } from "@vercel/analytics";
 
 type View = "form" | "running" | "result";
 
@@ -148,6 +149,10 @@ function Home() {
 
   const startMeeting = () => {
     if (headcount < 1 || hourlyRate < 0) return;
+    track("meeting_started", {
+      headcount,
+      hourly_rate: hourlyRate,
+    });
     setView("running");
   };
 
@@ -155,6 +160,12 @@ function Home() {
     const finishedMs =
       startRef.current != null ? performance.now() - startRef.current : 0;
     const amount = calcAmount(hourlyRate, headcount, finishedMs);
+    track("meeting_ended", {
+      duration_seconds: Math.floor(finishedMs / 1000),
+      headcount,
+      hourly_rate: hourlyRate,
+      amount,
+    });
     setFinalElapsedMs(finishedMs);
     setFinalAmount(amount);
     setFinalHeadcount(headcount);
@@ -226,13 +237,14 @@ function FormView({
     <div className="w-full max-w-xl">
       <header className="mb-12 text-center">
         <p className="mb-3 text-xs uppercase tracking-[0.3em] text-orange-500">
-          Meeting Cost Counter
+          Meeting TimeValue
         </p>
-        <h1 className="text-5xl font-black tracking-tight sm:text-6xl">
+        <h1 className="text-4xl font-black leading-tight tracking-tight sm:text-5xl">
           会議の
           <span className="bg-gradient-to-br from-orange-400 to-red-600 bg-clip-text text-transparent">
             値段
           </span>
+          、見えてますか?
         </h1>
         <p className="mt-4 text-sm text-zinc-400 sm:text-base">
           人数と時給を入れて、いま会議で燃えているお金を見てみよう。
@@ -502,6 +514,12 @@ function ResultView({
           href={xUrl}
           target="_blank"
           rel="noopener noreferrer"
+          onClick={() =>
+            track("share_clicked", {
+              frequency,
+              yearly_amount: yearly,
+            })
+          }
           className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-white py-4 text-base font-bold text-black transition hover:bg-zinc-200 active:scale-[0.99]"
         >
           <span className="text-lg font-black">𝕏</span>
@@ -515,6 +533,37 @@ function ResultView({
           もう一度測る
         </button>
       </div>
+
+      <MtvproCTA />
     </div>
+  );
+}
+
+function MtvproCTA() {
+  const url = process.env.NEXT_PUBLIC_MTVPRO_URL || "#";
+  const isLive = url !== "#";
+  return (
+    <aside className="mt-8 rounded-2xl border border-zinc-800 bg-zinc-950/40 p-5 sm:p-6">
+      <p className="text-sm text-zinc-300">
+        <span className="mr-2" aria-hidden>
+          🔁
+        </span>
+        継続して測りたい人は
+      </p>
+      <p className="mt-1 text-lg font-bold text-zinc-100">
+        Meeting TimeValue Pro
+      </p>
+      <p className="mt-1 text-xs text-zinc-500">
+        → 自動でMTGコストを集計・分析
+      </p>
+      <a
+        href={url}
+        {...(isLive ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+        className="mt-4 inline-flex items-center gap-1 rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2 text-xs font-semibold text-zinc-200 transition hover:border-orange-500 hover:text-orange-300"
+      >
+        詳しく見る
+        <span aria-hidden>→</span>
+      </a>
+    </aside>
   );
 }
