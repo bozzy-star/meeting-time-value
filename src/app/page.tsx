@@ -645,7 +645,10 @@ function ResultView({
           <h1 className="mt-6 text-7xl font-semibold leading-none tracking-tight text-orange-600 tabular-nums sm:text-8xl md:text-9xl">
             {money(amount)}
           </h1>
-          <p className="mt-10 text-base font-medium tabular-nums text-neutral-500">
+          <p className="mt-12 text-sm tracking-wide text-neutral-500">
+            {t.result.durationLabel}
+          </p>
+          <p className="mt-2 text-base font-medium tabular-nums text-neutral-700">
             {t.result.elapsedPeople(hms, headcount)}
           </p>
         </div>

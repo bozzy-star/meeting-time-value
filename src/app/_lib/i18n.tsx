@@ -152,6 +152,7 @@ type Dict = {
   };
   result: {
     title: string;
+    durationLabel: string;
     elapsedPeople: (hms: string, head: number) => string;
     freqIntro: string;
     freqOutro: string;
@@ -209,6 +210,7 @@ export const TRANSLATIONS: Record<Locale, Dict> = {
     },
     result: {
       title: "この会議のコスト",
+      durationLabel: "会議の時間と人数",
       elapsedPeople: (hms, head) => `${hms} / ${head}人`,
       freqIntro: "この会議が",
       freqOutro: "だと…",
@@ -289,6 +291,7 @@ export const TRANSLATIONS: Record<Locale, Dict> = {
     },
     result: {
       title: "What this meeting cost",
+      durationLabel: "Duration & participants",
       elapsedPeople: (hms, head) => `${hms} / ${head} ppl`,
       freqIntro: "If this meeting happens",
       freqOutro: "…",
@@ -370,6 +373,7 @@ export const TRANSLATIONS: Record<Locale, Dict> = {
     },
     result: {
       title: "What this meeting cost",
+      durationLabel: "Duration & participants",
       elapsedPeople: (hms, head) => `${hms} / ${head} ppl`,
       freqIntro: "If this meeting happens",
       freqOutro: "…",
@@ -452,6 +456,7 @@ export const TRANSLATIONS: Record<Locale, Dict> = {
     },
     result: {
       title: "Coût de cette réunion",
+      durationLabel: "Durée et participants",
       elapsedPeople: (hms, head) => `${hms} / ${head} pers.`,
       freqIntro: "Si cette réunion a lieu",
       freqOutro: "…",
@@ -532,6 +537,7 @@ export const TRANSLATIONS: Record<Locale, Dict> = {
     },
     result: {
       title: "Kosten dieses Meetings",
+      durationLabel: "Dauer und Teilnehmer",
       elapsedPeople: (hms, head) => `${hms} / ${head} Pers.`,
       freqIntro: "Wenn dieses Meeting",
       freqOutro: "stattfindet…",
