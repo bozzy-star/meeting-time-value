@@ -55,9 +55,18 @@ function formatDuration(seconds: number): string {
   return `${m}分${s.toString().padStart(2, "0")}秒`;
 }
 
+// Convert fullwidth digits (０-９) to halfwidth and strip non-digits.
+function toHalfDigits(s: string): string {
+  return s
+    .replace(/[０-９]/g, (c) =>
+      String.fromCharCode(c.charCodeAt(0) - 0xfee0),
+    )
+    .replace(/[^0-9]/g, "");
+}
+
 function calcAmount(
-  // NOTE: state name kept as `hourlyRate` for backwards compat with share
-  // URLs and analytics props, but UI labels say "コスト" (cost) per UX brief.
+  // State name kept as `hourlyRate` for backwards compat with share URLs and
+  // analytics props; UI labels say "コスト" per UX brief.
   hourlyRate: number,
   headcount: number,
   elapsedMs: number,
@@ -186,6 +195,7 @@ function Home() {
 
   const liveAmount = calcAmount(hourlyRate, headcount, elapsedMs);
   const elapsedSecForDisplay = Math.floor(elapsedMs / 1000);
+  const isRunning = view === "running";
 
   return (
     <main className="flex flex-1 flex-col items-center justify-center px-6 py-20 sm:px-10 sm:py-28">
@@ -204,6 +214,7 @@ function Home() {
           elapsedSec={elapsedSecForDisplay}
           headcount={headcount}
           hourlyRate={hourlyRate}
+          running={isRunning}
           onStop={stopMeeting}
         />
       )}
@@ -235,20 +246,33 @@ function FormView({
   onChangeHourlyRate: (n: number) => void;
   onStart: () => void;
 }) {
+  const handleInput =
+    (setter: (n: number) => void, min: number) =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const half = toHalfDigits(e.target.value);
+      const parsed = half === "" ? 0 : Number.parseInt(half, 10);
+      setter(Math.max(min, Number.isFinite(parsed) ? parsed : 0));
+    };
+
   return (
     <div className="w-full max-w-xl">
-      <header className="mb-20 text-center">
+      <header className="hero-bg relative -mx-6 mb-20 px-6 py-12 text-center sm:-mx-10 sm:px-10 sm:py-16">
+        <MoneyFly
+          size={48}
+          className="animate-float-up mx-auto mb-6 sm:hidden"
+        />
         <MoneyFly
           size={60}
-          className="animate-float-up mx-auto mb-6 text-orange-600"
+          className="animate-float-up mx-auto mb-6 hidden sm:block"
         />
-        <h1 className="text-4xl font-semibold leading-[1.2] tracking-tight text-neutral-900 sm:text-5xl">
-          会議の<span className="text-orange-600">値段</span>、
-          <br className="sm:hidden" />
-          見えてますか?
+        <h1 className="text-4xl font-semibold leading-[1.25] tracking-tight text-neutral-900 [text-wrap:balance] sm:text-5xl">
+          <span className="whitespace-nowrap">
+            会議の<span className="text-orange-600">値段</span>、
+          </span>{" "}
+          <span className="whitespace-nowrap">見えてますか?</span>
         </h1>
         <p className="mt-6 text-sm text-neutral-500 sm:text-base">
-          人数とコストを入れるだけ。リアルタイムで会議のコストが見えます。
+          人数とコストを入れるだけ。3秒で会議の“本当の値段”が見える。
         </p>
       </header>
 
@@ -260,19 +284,22 @@ function FormView({
         }}
       >
         <div>
-          <label className="mb-2 block text-xs font-medium tracking-wide text-neutral-500">
+          <label
+            htmlFor="headcount"
+            className="mb-2 block text-xs font-medium tracking-wide text-neutral-500"
+          >
             参加人数
           </label>
           <div className="relative">
             <input
-              type="number"
-              min={1}
-              step={1}
-              value={headcount}
-              onChange={(e) =>
-                onChangeHeadcount(Math.max(1, Number(e.target.value) || 0))
-              }
-              className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-4 pr-12 text-2xl font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600"
+              id="headcount"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              value={headcount === 0 ? "" : String(headcount)}
+              onChange={handleInput(onChangeHeadcount, 1)}
+              className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-4 pr-12 text-base font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600 sm:text-2xl"
             />
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-neutral-400">
               人
@@ -281,7 +308,10 @@ function FormView({
         </div>
 
         <div>
-          <label className="mb-2 block text-xs font-medium tracking-wide text-neutral-500">
+          <label
+            htmlFor="cost"
+            className="mb-2 block text-xs font-medium tracking-wide text-neutral-500"
+          >
             平均コスト
           </label>
           <div className="relative">
@@ -289,14 +319,14 @@ function FormView({
               ¥
             </span>
             <input
-              type="number"
-              min={0}
-              step={100}
-              value={hourlyRate}
-              onChange={(e) =>
-                onChangeHourlyRate(Math.max(0, Number(e.target.value) || 0))
-              }
-              className="w-full rounded-xl border border-neutral-200 bg-white py-4 pl-10 pr-12 text-2xl font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600"
+              id="cost"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              autoComplete="off"
+              value={hourlyRate === 0 ? "" : String(hourlyRate)}
+              onChange={handleInput(onChangeHourlyRate, 0)}
+              className="w-full rounded-xl border border-neutral-200 bg-white py-4 pl-10 pr-12 text-base font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600 sm:text-2xl"
             />
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-neutral-400">
               /時
@@ -306,7 +336,7 @@ function FormView({
 
         <button
           type="submit"
-          className="w-full rounded-xl bg-orange-600 py-5 text-base font-semibold text-white transition hover:bg-orange-700 active:scale-[0.99]"
+          className="min-h-[44px] w-full rounded-xl bg-orange-600 py-5 text-base font-semibold text-white transition hover:bg-orange-700 active:scale-[0.99]"
         >
           会議スタート
         </button>
@@ -319,59 +349,99 @@ function FormView({
   );
 }
 
-type FloatItem = { id: number; value: number };
+type Particle = {
+  id: number;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  rot: number;
+  size: number; // rem
+};
 
 function RunningView({
   amount,
   elapsedSec,
   headcount,
   hourlyRate,
+  running,
   onStop,
 }: {
   amount: number;
   elapsedSec: number;
   headcount: number;
   hourlyRate: number;
+  running: boolean;
   onStop: () => void;
 }) {
-  // Floating "+¥XX" markers — fly upward when amount increases
-  const prevRef = useRef(amount);
-  const idRef = useRef(0);
-  const [floats, setFloats] = useState<FloatItem[]>([]);
+  // ¥ particles drifting up at random positions/angles
+  const [particles, setParticles] = useState<Particle[]>([]);
+  const seqRef = useRef(0);
 
   useEffect(() => {
-    const delta = amount - prevRef.current;
-    prevRef.current = amount;
-    if (delta <= 0) return;
-    const id = ++idRef.current;
-    setFloats((prev) => [...prev, { id, value: delta }]);
-    const t = window.setTimeout(() => {
-      setFloats((prev) => prev.filter((f) => f.id !== id));
-    }, 700);
-    return () => window.clearTimeout(t);
-  }, [amount]);
+    if (!running) return;
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    const spawn = () => {
+      if (cancelled) return;
+      seqRef.current += 1;
+      const id = seqRef.current;
+      const p: Particle = {
+        id,
+        x: Math.random() * 400 - 200,
+        y: Math.random() * 150 - 50,
+        dx: Math.random() * 80 - 40,
+        dy: -160 - Math.random() * 80,
+        rot: Math.random() * 50 - 25,
+        size: 1.5 + Math.random(),
+      };
+      setParticles((prev) => [...prev.slice(-7), p]);
+      window.setTimeout(() => {
+        setParticles((prev) => prev.filter((x) => x.id !== id));
+      }, 1700);
+      const next = 400 + Math.random() * 300;
+      timeoutId = window.setTimeout(spawn, next);
+    };
+
+    timeoutId = window.setTimeout(spawn, 200);
+    return () => {
+      cancelled = true;
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
+  }, [running]);
 
   return (
     <div className="flex w-full max-w-3xl flex-col items-center text-center">
       <div className="relative">
-        <p className="text-7xl font-semibold tabular-nums tracking-tight text-orange-600 sm:text-8xl md:text-9xl">
-          {formatYen(amount)}
-        </p>
-        {/* Floating delta markers */}
+        {/* Particle layer — absolute, centered on the counter */}
         <div
-          className="pointer-events-none absolute inset-x-0 -top-4 flex justify-center"
+          className="pointer-events-none absolute left-1/2 top-1/2 z-10"
           aria-hidden
         >
-          {floats.map((f) => (
+          {particles.map((p) => (
             <span
-              key={f.id}
-              className="absolute select-none text-xl font-semibold tabular-nums text-orange-500/80 sm:text-2xl"
-              style={{ animation: "fly-up 0.7s ease-out forwards" }}
+              key={p.id}
+              className="yen-particle"
+              style={
+                {
+                  left: `${p.x}px`,
+                  top: `${p.y}px`,
+                  fontSize: `${p.size}rem`,
+                  ["--dx" as string]: `${p.dx}px`,
+                  ["--dy" as string]: `${p.dy}px`,
+                  ["--rot" as string]: `${p.rot}deg`,
+                } as React.CSSProperties
+              }
             >
-              +{formatYen(f.value)}
+              ¥
             </span>
           ))}
         </div>
+
+        <p className="text-7xl font-semibold tabular-nums tracking-tight text-orange-600 sm:text-8xl md:text-9xl">
+          {formatYen(amount)}
+        </p>
       </div>
 
       <p className="mt-12 text-xl font-medium tabular-nums text-neutral-600 sm:text-2xl">
@@ -395,7 +465,7 @@ function RunningView({
       <button
         type="button"
         onClick={onStop}
-        className="mt-24 rounded-full border border-neutral-200 bg-white px-10 py-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 active:scale-[0.99]"
+        className="mt-24 min-h-[44px] rounded-full border border-neutral-200 bg-white px-10 py-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 active:scale-[0.99]"
       >
         終了
       </button>
@@ -455,39 +525,38 @@ function ResultView({
   return (
     <div className="w-full max-w-2xl">
       <header className="mb-14 text-center">
-        <p className="flex items-center justify-center gap-2 text-sm text-neutral-500">
-          <MoneyFly
-            size={26}
-            className="animate-float-up text-orange-600"
-          />
+        <p className="flex items-center justify-center gap-3 text-sm text-neutral-500">
+          <MoneyFly size={26} />
           <span>
             <span className="tabular-nums">{minutes}</span>
             分の会議で使った金額
           </span>
         </p>
-        <h1 className="mt-4 text-5xl font-semibold leading-none tracking-tight text-orange-600 tabular-nums sm:text-6xl">
+        <h1 className="mt-5 text-7xl font-semibold leading-none tracking-tight text-orange-600 tabular-nums sm:text-8xl md:text-9xl">
           {formatYen(amount)}
         </h1>
       </header>
 
       {/* Frequency projection */}
       <div className="mb-12 rounded-2xl bg-neutral-50 p-6 sm:p-8">
-        <div className="mb-6 flex flex-col items-start gap-2 text-sm text-neutral-600 sm:flex-row sm:items-center sm:gap-3">
-          <span>この会議が</span>
-          <select
-            value={frequency}
-            onChange={(e) =>
-              onChangeFrequency(e.target.value as FrequencyKey)
-            }
-            className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 outline-none transition focus:ring-1 focus:ring-orange-600"
-          >
-            {FREQUENCIES.map((f) => (
-              <option key={f.key} value={f.key}>
-                {f.label}
-              </option>
-            ))}
-          </select>
-          <span>だと:</span>
+        <div className="mb-6 flex flex-col items-start gap-2 text-sm text-neutral-600 md:flex-row md:items-center md:justify-between md:gap-4">
+          <div className="flex items-center gap-3">
+            <span>この会議が</span>
+            <select
+              value={frequency}
+              onChange={(e) =>
+                onChangeFrequency(e.target.value as FrequencyKey)
+              }
+              className="rounded-lg border border-neutral-200 bg-white px-3 py-2 text-sm font-semibold text-neutral-900 outline-none transition focus:ring-1 focus:ring-orange-600"
+            >
+              {FREQUENCIES.map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <span className="text-xs text-neutral-500 md:text-sm">だと…</span>
         </div>
         <dl className="grid grid-cols-2 gap-6">
           <div>
@@ -518,19 +587,19 @@ function ResultView({
         <dl className="grid grid-cols-3 border-t border-neutral-200 text-center">
           <div className="px-3 py-4">
             <dt className="text-xs text-neutral-500">人数</dt>
-            <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-900">
+            <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-500">
               {headcount}
             </dd>
           </div>
           <div className="px-3 py-4">
             <dt className="text-xs text-neutral-500">コスト</dt>
-            <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-900">
+            <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-500">
               {formatYen(hourlyRate)}
             </dd>
           </div>
           <div className="px-3 py-4">
             <dt className="text-xs text-neutral-500">時間</dt>
-            <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-900">
+            <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-500">
               {formatDuration(elapsedSec)}
             </dd>
           </div>
@@ -548,7 +617,7 @@ function ResultView({
               yearly_amount: yearly,
             })
           }
-          className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-900 py-4 text-base font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]"
+          className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-900 py-4 text-base font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]"
         >
           <span className="text-lg font-black">𝕏</span>
           でシェア
@@ -556,20 +625,37 @@ function ResultView({
         <button
           type="button"
           onClick={onReset}
-          className="flex-1 rounded-xl border border-neutral-200 bg-white py-4 text-base font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 active:scale-[0.99]"
+          className="min-h-[44px] flex-1 rounded-xl border border-neutral-200 bg-white py-4 text-base font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 active:scale-[0.99]"
         >
           もう一度測る
         </button>
       </div>
+
+      {/* Share text preview — improves trust + share rate */}
+      <SharePreview text={shareText} />
 
       <MtvproCTA />
     </div>
   );
 }
 
+function SharePreview({ text }: { text: string }) {
+  return (
+    <details className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-600">
+      <summary className="flex cursor-pointer select-none items-center gap-2 font-medium text-neutral-500">
+        <span aria-hidden>📤</span>
+        シェア時の文面
+      </summary>
+      <pre className="mt-3 whitespace-pre-wrap break-words font-sans text-xs leading-relaxed text-neutral-700">
+        {text}
+      </pre>
+    </details>
+  );
+}
+
 function MtvproCTA() {
   return (
-    <aside className="mt-12 rounded-2xl border border-neutral-200 p-8 text-center">
+    <aside className="mt-12 rounded-2xl border border-neutral-200 p-6 text-center sm:p-8">
       <p className="text-base font-semibold text-neutral-900">
         Meeting TimeValue Pro 開発中
       </p>

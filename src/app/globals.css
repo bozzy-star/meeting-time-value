@@ -23,6 +23,7 @@ body {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+/* MoneyFly subtle float */
 @keyframes float-up {
   0%,
   100% {
@@ -37,22 +38,46 @@ body {
   transform-origin: center;
   will-change: transform;
 }
-@media (prefers-reduced-motion: reduce) {
-  .animate-float-up {
-    animation: none;
-  }
-}
 
-@keyframes fly-up {
+/* ¥ particle in running view: drifts up-and-out with rotation */
+@keyframes yen-fly {
   0% {
-    transform: translateY(0);
     opacity: 0;
+    transform: translate(0, 0) rotate(0deg);
   }
-  20% {
+  10% {
     opacity: 1;
   }
   100% {
-    transform: translateY(-56px);
+    opacity: 0;
+    transform: translate(var(--dx, 0px), var(--dy, -200px))
+      rotate(var(--rot, 0deg));
+  }
+}
+.yen-particle {
+  position: absolute;
+  pointer-events: none;
+  color: #f97316;
+  font-weight: 800;
+  animation: yen-fly 1.6s ease-out forwards;
+  text-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
+  user-select: none;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-up,
+  .yen-particle {
+    animation: none;
+  }
+  .yen-particle {
     opacity: 0;
   }
+}
+
+/* Hero background: very faint repeating ¥ pattern */
+.hero-bg {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><text x='12' y='42' font-family='system-ui,sans-serif' font-size='34' font-weight='800' fill='%23ea580c' opacity='0.05'>%C2%A5</text><text x='56' y='80' font-family='system-ui,sans-serif' font-size='22' font-weight='700' fill='%23ea580c' opacity='0.04'>%C2%A5</text></svg>");
+  background-repeat: repeat;
+  background-size: 90px 90px;
 }
