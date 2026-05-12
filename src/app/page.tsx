@@ -349,15 +349,7 @@ function FormView({
   );
 }
 
-type Particle = {
-  id: number;
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
-  rot: number;
-  size: number; // rem
-};
+type FloatItem = { id: number; value: number };
 
 function RunningView({
   amount,
@@ -374,67 +366,44 @@ function RunningView({
   running: boolean;
   onStop: () => void;
 }) {
-  // ¥ particles drifting up at random positions/angles
-  const [particles, setParticles] = useState<Particle[]>([]);
-  const seqRef = useRef(0);
+  // Floating "+¥XX" markers above the big counter — vertical fade-up.
+  // Max 2 concurrent so they never pile up.
+  const prevRef = useRef(amount);
+  const idRef = useRef(0);
+  const [floats, setFloats] = useState<FloatItem[]>([]);
 
   useEffect(() => {
-    if (!running) return;
-    let cancelled = false;
-    let timeoutId: number | null = null;
-
-    const spawn = () => {
-      if (cancelled) return;
-      seqRef.current += 1;
-      const id = seqRef.current;
-      const p: Particle = {
-        id,
-        x: Math.random() * 400 - 200,
-        y: Math.random() * 150 - 50,
-        dx: Math.random() * 80 - 40,
-        dy: -160 - Math.random() * 80,
-        rot: Math.random() * 50 - 25,
-        size: 1.5 + Math.random(),
-      };
-      setParticles((prev) => [...prev.slice(-7), p]);
-      window.setTimeout(() => {
-        setParticles((prev) => prev.filter((x) => x.id !== id));
-      }, 1700);
-      const next = 400 + Math.random() * 300;
-      timeoutId = window.setTimeout(spawn, next);
-    };
-
-    timeoutId = window.setTimeout(spawn, 200);
-    return () => {
-      cancelled = true;
-      if (timeoutId != null) window.clearTimeout(timeoutId);
-    };
-  }, [running]);
+    if (!running) {
+      prevRef.current = amount;
+      return;
+    }
+    const delta = amount - prevRef.current;
+    prevRef.current = amount;
+    if (delta <= 0) return;
+    idRef.current += 1;
+    const id = idRef.current;
+    setFloats((prev) => [...prev.slice(-1), { id, value: delta }]);
+    const t = window.setTimeout(() => {
+      setFloats((prev) => prev.filter((f) => f.id !== id));
+    }, 800);
+    return () => window.clearTimeout(t);
+  }, [amount, running]);
 
   return (
     <div className="flex w-full max-w-3xl flex-col items-center text-center">
       <div className="relative">
-        {/* Particle layer — absolute, centered on the counter */}
+        {/* +¥XX layer — floats above the big number, never overlaps it */}
         <div
-          className="pointer-events-none absolute left-1/2 top-1/2 z-10"
+          className="pointer-events-none absolute inset-x-0 -top-10 flex justify-center sm:-top-12"
           aria-hidden
         >
-          {particles.map((p) => (
+          {floats.map((f) => (
             <span
-              key={p.id}
-              className="yen-particle"
-              style={
-                {
-                  left: `${p.x}px`,
-                  top: `${p.y}px`,
-                  fontSize: `${p.size}rem`,
-                  ["--dx" as string]: `${p.dx}px`,
-                  ["--dy" as string]: `${p.dy}px`,
-                  ["--rot" as string]: `${p.rot}deg`,
-                } as React.CSSProperties
-              }
+              key={f.id}
+              className="absolute select-none text-xl font-semibold tabular-nums text-orange-500/70 sm:text-2xl"
+              style={{ animation: "fly-up 0.7s ease-out forwards" }}
             >
-              ¥
+              +{formatYen(f.value)}
             </span>
           ))}
         </div>

@@ -39,39 +39,24 @@ body {
   will-change: transform;
 }
 
-/* ¥ particle in running view: drifts up-and-out with rotation */
-@keyframes yen-fly {
+/* +¥XX increase marker: vertical fade-up above the big counter */
+@keyframes fly-up {
   0% {
+    transform: translateY(0);
     opacity: 0;
-    transform: translate(0, 0) rotate(0deg);
   }
-  10% {
+  20% {
     opacity: 1;
   }
   100% {
+    transform: translateY(-48px);
     opacity: 0;
-    transform: translate(var(--dx, 0px), var(--dy, -200px))
-      rotate(var(--rot, 0deg));
   }
-}
-.yen-particle {
-  position: absolute;
-  pointer-events: none;
-  color: #f97316;
-  font-weight: 800;
-  animation: yen-fly 1.6s ease-out forwards;
-  text-shadow: 0 2px 8px rgba(249, 115, 22, 0.3);
-  user-select: none;
-  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-float-up,
-  .yen-particle {
+  .animate-float-up {
     animation: none;
-  }
-  .yen-particle {
-    opacity: 0;
   }
 }
 
