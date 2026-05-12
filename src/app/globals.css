@@ -87,9 +87,5 @@ body {
   }
 }
 
-/* Hero background: very faint repeating ¥ pattern */
-.hero-bg {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><text x='12' y='42' font-family='system-ui,sans-serif' font-size='34' font-weight='800' fill='%23ea580c' opacity='0.05'>%C2%A5</text><text x='56' y='80' font-family='system-ui,sans-serif' font-size='22' font-weight='700' fill='%23ea580c' opacity='0.04'>%C2%A5</text></svg>");
-  background-repeat: repeat;
-  background-size: 90px 90px;
-}
+/* Hero background pattern is now applied via inline style with
+   per-currency symbol — see heroBgStyle() in page.tsx. */

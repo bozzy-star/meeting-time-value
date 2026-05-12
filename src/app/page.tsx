@@ -4,56 +4,33 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
 import { MoneyFly } from "./_components/MoneyFly";
+import {
+  CURRENCIES,
+  CURRENCY_SYMBOL,
+  TRANSLATIONS,
+  bgSymbolFor,
+  formatHMS,
+  formatDurationPhrase,
+  formatMoney,
+  formatNumberFor,
+  isCurrency,
+  type CurrencyCode,
+  type FrequencyKey,
+  type Locale,
+  useTranslation,
+} from "./_lib/i18n";
 
 type View = "form" | "running" | "result";
 
-type FrequencyKey =
-  | "once"
-  | "weekly"
-  | "weekly2"
-  | "biweekly"
-  | "monthly"
-  | "weekdays"
-  | "daily";
-
-const FREQUENCIES: {
-  key: FrequencyKey;
-  label: string;
-  perYear: number;
-}[] = [
-  { key: "once", label: "単発 (1回のみ)", perYear: 1 },
-  { key: "weekly", label: "週1回", perYear: 52 },
-  { key: "weekly2", label: "週2回", perYear: 104 },
-  { key: "biweekly", label: "隔週 (2週に1回)", perYear: 26 },
-  { key: "monthly", label: "月1回", perYear: 12 },
-  { key: "weekdays", label: "営業日毎日 (週5)", perYear: 250 },
-  { key: "daily", label: "毎日 (週7)", perYear: 365 },
+const FREQUENCIES: { key: FrequencyKey; perYear: number }[] = [
+  { key: "once", perYear: 1 },
+  { key: "weekly", perYear: 52 },
+  { key: "weekly2", perYear: 104 },
+  { key: "biweekly", perYear: 26 },
+  { key: "monthly", perYear: 12 },
+  { key: "weekdays", perYear: 250 },
+  { key: "daily", perYear: 365 },
 ];
-
-const FREQ_LABEL_SHORT: Record<FrequencyKey, string> = {
-  once: "単発",
-  weekly: "週1回",
-  weekly2: "週2回",
-  biweekly: "隔週",
-  monthly: "月1回",
-  weekdays: "営業日毎日",
-  daily: "毎日",
-};
-
-// Use ¥ (U+00A5 YEN SIGN) instead of Intl's ￥ (U+FFE5 FULLWIDTH YEN SIGN),
-// which is missing from Noto Sans JP "latin" subset and renders as tofu (□).
-const numberFormatter = new Intl.NumberFormat("ja-JP");
-function formatYen(n: number): string {
-  return `¥${numberFormatter.format(Math.round(n))}`;
-}
-
-function formatDuration(seconds: number): string {
-  const safe = Math.max(0, Math.floor(seconds));
-  const m = Math.floor(safe / 60);
-  const s = safe % 60;
-  if (m === 0) return `${s}秒`;
-  return `${m}分${s.toString().padStart(2, "0")}秒`;
-}
 
 // Convert fullwidth digits (０-９) to halfwidth and strip non-digits.
 function toHalfDigits(s: string): string {
@@ -66,7 +43,7 @@ function toHalfDigits(s: string): string {
 
 function calcAmount(
   // State name kept as `hourlyRate` for backwards compat with share URLs and
-  // analytics props; UI labels say "コスト" per UX brief.
+  // analytics props; UI label is the localized "コスト" / "cost" / "coût" / "Kosten".
   hourlyRate: number,
   headcount: number,
   elapsedMs: number,
@@ -90,6 +67,7 @@ export default function Page() {
 function Home() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { locale, currency, setCurrency } = useTranslation();
 
   const initialFromUrl = useMemo(() => {
     if (searchParams.get("result") !== "1") return null;
@@ -111,6 +89,15 @@ function Home() {
     const frequency: FrequencyKey =
       FREQUENCIES.some((f) => f.key === freqRaw) ? freqRaw : "weekly";
     return { amount, duration, headcount, hourly, frequency };
+  }, [searchParams]);
+
+  // Sync currency from URL on result page so opened share links inherit it.
+  useEffect(() => {
+    const c = searchParams.get("currency");
+    if (isCurrency(c) && c !== currency) {
+      setCurrency(c);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
   const [view, setView] = useState<View>(initialFromUrl ? "result" : "form");
@@ -163,6 +150,8 @@ function Home() {
     track("meeting_started", {
       headcount,
       hourly_rate: hourlyRate,
+      currency,
+      locale,
     });
     setView("running");
   };
@@ -176,6 +165,8 @@ function Home() {
       headcount,
       hourly_rate: hourlyRate,
       amount,
+      currency,
+      locale,
     });
     setFinalElapsedMs(finishedMs);
     setFinalAmount(amount);
@@ -233,6 +224,60 @@ function Home() {
   );
 }
 
+// ---------- Hero background pattern (per-currency, inline style) ----------
+
+function heroBgStyle(currency: CurrencyCode): React.CSSProperties {
+  const sym = encodeURIComponent(bgSymbolFor(currency));
+  const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='90' height='90'><text x='12' y='42' font-family='system-ui,sans-serif' font-size='34' font-weight='800' fill='%23ea580c' opacity='0.05'>${sym}</text><text x='56' y='80' font-family='system-ui,sans-serif' font-size='22' font-weight='700' fill='%23ea580c' opacity='0.04'>${sym}</text></svg>`;
+  return {
+    backgroundImage: `url("data:image/svg+xml;utf8,${svg}")`,
+    backgroundRepeat: "repeat",
+    backgroundSize: "90px 90px",
+  };
+}
+
+// ---------- Currency tab selector ----------
+
+function CurrencyTabs({
+  value,
+  onChange,
+  label,
+}: {
+  value: CurrencyCode;
+  onChange: (c: CurrencyCode) => void;
+  label: string;
+}) {
+  return (
+    <div>
+      <div className="mb-2 text-xs font-medium tracking-wide text-neutral-500">
+        {label}
+      </div>
+      <div className="flex gap-2">
+        {CURRENCIES.map((c) => {
+          const active = c === value;
+          return (
+            <button
+              key={c}
+              type="button"
+              onClick={() => onChange(c)}
+              aria-pressed={active}
+              className={`min-h-[44px] flex-1 rounded-xl border px-3 py-2 text-lg font-semibold tabular-nums transition ${
+                active
+                  ? "border-orange-600 bg-orange-50 text-orange-600"
+                  : "border-neutral-200 bg-white text-neutral-500 hover:border-neutral-400 hover:text-neutral-700"
+              }`}
+            >
+              {CURRENCY_SYMBOL[c]}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------- FormView ----------
+
 function FormView({
   headcount,
   hourlyRate,
@@ -246,6 +291,9 @@ function FormView({
   onChangeHourlyRate: (n: number) => void;
   onStart: () => void;
 }) {
+  const { t, currency, setCurrency } = useTranslation();
+  const symbol = CURRENCY_SYMBOL[currency];
+
   const handleInput =
     (setter: (n: number) => void, min: number) =>
     (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -256,7 +304,10 @@ function FormView({
 
   return (
     <div className="w-full max-w-xl">
-      <header className="hero-bg relative -mx-6 mb-20 px-6 py-12 text-center sm:-mx-10 sm:px-10 sm:py-16">
+      <header
+        className="relative -mx-6 mb-20 px-6 py-12 text-center sm:-mx-10 sm:px-10 sm:py-16"
+        style={heroBgStyle(currency)}
+      >
         <MoneyFly
           size={48}
           className="animate-float-up mx-auto mb-6 sm:hidden"
@@ -267,12 +318,12 @@ function FormView({
         />
         <h1 className="text-4xl font-semibold leading-[1.25] tracking-tight text-neutral-900 [text-wrap:balance] sm:text-5xl">
           <span className="whitespace-nowrap">
-            会議の<span className="text-orange-600">値段</span>、
+            <HeroTitleColored part={t.hero.titlePart1} />
           </span>{" "}
-          <span className="whitespace-nowrap">見えてますか?</span>
+          <span className="whitespace-nowrap">{t.hero.titlePart2}</span>
         </h1>
         <p className="mt-6 text-sm text-neutral-500 sm:text-base">
-          人数とコストを入れるだけ。3秒で会議の“本当の値段”が見える。
+          {t.hero.sub}
         </p>
       </header>
 
@@ -283,12 +334,18 @@ function FormView({
           onStart();
         }}
       >
+        <CurrencyTabs
+          value={currency}
+          onChange={setCurrency}
+          label={t.form.currencyLabel}
+        />
+
         <div>
           <label
             htmlFor="headcount"
             className="mb-2 block text-xs font-medium tracking-wide text-neutral-500"
           >
-            参加人数
+            {t.form.headcountLabel}
           </label>
           <div className="relative">
             <input
@@ -299,10 +356,10 @@ function FormView({
               autoComplete="off"
               value={headcount === 0 ? "" : String(headcount)}
               onChange={handleInput(onChangeHeadcount, 1)}
-              className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-4 pr-12 text-base font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600 sm:text-2xl"
+              className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-4 pr-14 text-base font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600 sm:text-2xl"
             />
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-neutral-400">
-              人
+              {t.form.headcountSuffix}
             </span>
           </div>
         </div>
@@ -312,11 +369,11 @@ function FormView({
             htmlFor="cost"
             className="mb-2 block text-xs font-medium tracking-wide text-neutral-500"
           >
-            平均コスト
+            {t.form.costLabel}
           </label>
           <div className="relative">
             <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-lg text-neutral-400">
-              ¥
+              {symbol}
             </span>
             <input
               id="cost"
@@ -326,10 +383,10 @@ function FormView({
               autoComplete="off"
               value={hourlyRate === 0 ? "" : String(hourlyRate)}
               onChange={handleInput(onChangeHourlyRate, 0)}
-              className="w-full rounded-xl border border-neutral-200 bg-white py-4 pl-10 pr-12 text-base font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600 sm:text-2xl"
+              className="w-full rounded-xl border border-neutral-200 bg-white py-4 pl-10 pr-14 text-base font-semibold tabular-nums text-neutral-900 outline-none transition focus:border-orange-600 sm:text-2xl"
             />
             <span className="pointer-events-none absolute inset-y-0 right-4 flex items-center text-sm text-neutral-400">
-              /時
+              {t.form.costSuffix}
             </span>
           </div>
         </div>
@@ -338,26 +395,59 @@ function FormView({
           type="submit"
           className="min-h-[44px] w-full rounded-xl bg-orange-600 py-5 text-base font-semibold text-white transition hover:bg-orange-700 active:scale-[0.99]"
         >
-          会議スタート
+          {t.button.start}
         </button>
 
-        <p className="text-center text-xs text-neutral-400">
-          ※ 数字はあくまで目安です。
-        </p>
+        <p className="text-center text-xs text-neutral-400">{t.form.note}</p>
       </form>
     </div>
   );
 }
 
+/**
+ * Renders the localized title fragment with an orange accent applied
+ * to a fixed marker substring per locale. Falls back to whole-string
+ * orange if no marker found.
+ */
+function HeroTitleColored({ part }: { part: string }) {
+  // Markers chosen so the "money / cost / coût / Kosten" word pops.
+  const markers: { needle: string; before?: string; after?: string }[] = [
+    { needle: "値段" },
+    { needle: "cost" },
+    { needle: "coût" },
+    { needle: "kostet" },
+    { needle: "Kosten" },
+    { needle: "Meeting" },
+  ];
+  for (const { needle } of markers) {
+    const idx = part.toLowerCase().indexOf(needle.toLowerCase());
+    if (idx >= 0) {
+      const before = part.slice(0, idx);
+      const hit = part.slice(idx, idx + needle.length);
+      const after = part.slice(idx + needle.length);
+      return (
+        <>
+          {before}
+          <span className="text-orange-600">{hit}</span>
+          {after}
+        </>
+      );
+    }
+  }
+  return <>{part}</>;
+}
+
+// ---------- RunningView (popcorn burst + i18n) ----------
+
 type Pop = {
   id: number;
-  x: number; // initial horizontal offset (px) within the burst strip
-  midX: number; // peak-time horizontal offset (px)
-  dx: number; // final horizontal offset (px)
-  peakY: number; // peak-time vertical offset (px, negative = up)
-  finalY: number; // final vertical offset (px, negative = up but below peak)
-  rot: number; // final rotation (deg)
-  size: number; // rem
+  x: number;
+  midX: number;
+  dx: number;
+  peakY: number;
+  finalY: number;
+  rot: number;
+  size: number;
 };
 
 function RunningView({
@@ -375,8 +465,10 @@ function RunningView({
   running: boolean;
   onStop: () => void;
 }) {
-  // Popcorn-burst: ¥ marks pop out of the strip above the big counter,
-  // rise on a parabolic arc, then settle slightly lower as they fade.
+  const { t, locale, currency, money, num } = useTranslation();
+  const symbol = CURRENCY_SYMBOL[currency];
+
+  // Popcorn-burst ¥/$/£/€ particles
   const [pops, setPops] = useState<Pop[]>([]);
   const seqRef = useRef(0);
 
@@ -393,8 +485,8 @@ function RunningView({
       const p: Pop = {
         id,
         x: Math.random() * 300 - 150,
-        dx,
         midX: dx * 0.5,
+        dx,
         peakY: -80 - Math.random() * 60,
         finalY: -56 - Math.random() * 40,
         rot: Math.random() * 180 - 90,
@@ -418,7 +510,6 @@ function RunningView({
   return (
     <div className="flex w-full max-w-3xl flex-col items-center text-center">
       <div className="relative">
-        {/* Popcorn burst layer — strip directly above the big counter */}
         <div
           className="pointer-events-none absolute inset-x-0 -top-12 h-16 overflow-visible"
           aria-hidden
@@ -439,31 +530,33 @@ function RunningView({
                 } as React.CSSProperties
               }
             >
-              ¥
+              {symbol}
             </span>
           ))}
         </div>
 
         <p className="text-7xl font-semibold tabular-nums tracking-tight text-orange-600 sm:text-8xl md:text-9xl">
-          {formatYen(amount)}
+          {money(amount)}
         </p>
       </div>
 
       <p className="mt-12 text-xl font-medium tabular-nums text-neutral-600 sm:text-2xl">
-        {formatDuration(elapsedSec)}
+        {formatHMS(elapsedSec)}
       </p>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-neutral-400">
         <span>
-          <span className="tabular-nums text-neutral-600">{headcount}</span>人
+          <span className="tabular-nums text-neutral-600">{headcount}</span>
+          {locale === "ja" ? t.running.peopleSuffix : ` ${t.running.peopleSuffix}`}
         </span>
         <span>×</span>
         <span>
-          コスト{" "}
+          {t.running.breakdownCostPrefix}
+          {symbol}
           <span className="tabular-nums text-neutral-600">
-            {numberFormatter.format(hourlyRate)}
+            {num(hourlyRate)}
           </span>
-          円/時
+          {t.running.breakdownCostSuffix}
         </span>
       </div>
 
@@ -472,11 +565,13 @@ function RunningView({
         onClick={onStop}
         className="mt-24 min-h-[44px] rounded-full border border-neutral-200 bg-white px-10 py-4 text-sm font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 active:scale-[0.99]"
       >
-        終了
+        {t.button.end}
       </button>
     </div>
   );
 }
+
+// ---------- ResultView ----------
 
 function ResultView({
   amount,
@@ -495,21 +590,23 @@ function ResultView({
   onChangeFrequency: (f: FrequencyKey) => void;
   onReset: () => void;
 }) {
+  const { t, locale, currency, money } = useTranslation();
+
   const elapsedSec = Math.max(1, Math.floor(elapsedMs / 1000));
-  const minutes = Math.max(1, Math.round(elapsedSec / 60));
+  const hms = formatHMS(elapsedSec);
   const freq = getFrequency(frequency);
   const yearly = amount * freq.perYear;
   const monthly = Math.round(yearly / 12);
 
-  const ogUrl = `/api/og?amount=${amount}&duration=${elapsedSec}&headcount=${headcount}&frequency=${frequency}&yearly=${yearly}`;
+  const ogUrl = `/api/og?amount=${amount}&duration=${elapsedSec}&headcount=${headcount}&frequency=${frequency}&yearly=${yearly}&currency=${currency}&lang=${encodeURIComponent(locale)}`;
 
-  const shareText = `うちの会議、${formatDuration(elapsedSec)} で ${formatYen(
-    amount,
-  )} 使ってた💸\n${FREQ_LABEL_SHORT[frequency]} で続けると 年${formatYen(
-    yearly,
-  )}…\n#会議の値段`;
+  const shareText = t.buildShareText({
+    durationPhrase: formatDurationPhrase(locale, elapsedSec),
+    amountFormatted: money(amount),
+    yearlyFormatted: money(yearly),
+    frequency,
+  });
 
-  // Share URL embeds full result state so opener sees same numbers
   const [shareUrl, setShareUrl] = useState("");
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -520,8 +617,18 @@ function ResultView({
     u.searchParams.set("headcount", String(headcount));
     u.searchParams.set("hourly", String(hourlyRate));
     u.searchParams.set("frequency", frequency);
+    u.searchParams.set("currency", currency);
+    u.searchParams.set("lang", locale);
     setShareUrl(u.toString());
-  }, [amount, elapsedSec, headcount, hourlyRate, frequency]);
+  }, [
+    amount,
+    elapsedSec,
+    headcount,
+    hourlyRate,
+    frequency,
+    currency,
+    locale,
+  ]);
 
   const xUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(
     shareText,
@@ -532,21 +639,23 @@ function ResultView({
       <header className="mb-14 text-center">
         <p className="flex items-center justify-center gap-3 text-sm text-neutral-500">
           <MoneyFly size={26} />
-          <span>
-            <span className="tabular-nums">{minutes}</span>
-            分の会議で使った金額
-          </span>
+          <span>{t.result.title}</span>
         </p>
-        <h1 className="mt-5 text-7xl font-semibold leading-none tracking-tight text-orange-600 tabular-nums sm:text-8xl md:text-9xl">
-          {formatYen(amount)}
-        </h1>
+        <div className="py-12 md:py-16">
+          <h1 className="mt-6 text-7xl font-semibold leading-none tracking-tight text-orange-600 tabular-nums sm:text-8xl md:text-9xl">
+            {money(amount)}
+          </h1>
+          <p className="mt-10 text-base font-medium tabular-nums text-neutral-500">
+            {t.result.elapsedPeople(hms, headcount)}
+          </p>
+        </div>
       </header>
 
       {/* Frequency projection */}
       <div className="mb-12 rounded-2xl bg-neutral-50 p-6 sm:p-8">
         <div className="mb-6 flex flex-col items-start gap-2 text-sm text-neutral-600 md:flex-row md:items-center md:justify-between md:gap-4">
-          <div className="flex items-center gap-3">
-            <span>この会議が</span>
+          <div className="flex flex-wrap items-center gap-3">
+            <span>{t.result.freqIntro}</span>
             <select
               value={frequency}
               onChange={(e) =>
@@ -556,24 +665,26 @@ function ResultView({
             >
               {FREQUENCIES.map((f) => (
                 <option key={f.key} value={f.key}>
-                  {f.label}
+                  {t.freq[f.key]}
                 </option>
               ))}
             </select>
           </div>
-          <span className="text-xs text-neutral-500 md:text-sm">だと…</span>
+          <span className="text-xs text-neutral-500 md:text-sm">
+            {t.result.freqOutro}
+          </span>
         </div>
         <dl className="grid grid-cols-2 gap-6">
           <div>
-            <dt className="text-xs text-neutral-500">月</dt>
+            <dt className="text-xs text-neutral-500">{t.result.monthLabel}</dt>
             <dd className="mt-1 text-2xl font-semibold tabular-nums text-neutral-900 sm:text-3xl">
-              {formatYen(monthly)}
+              {money(monthly)}
             </dd>
           </div>
           <div>
-            <dt className="text-xs text-orange-600">年</dt>
+            <dt className="text-xs text-orange-600">{t.result.yearLabel}</dt>
             <dd className="mt-1 text-2xl font-semibold tabular-nums text-orange-600 sm:text-3xl">
-              {formatYen(yearly)}
+              {money(yearly)}
             </dd>
           </div>
         </dl>
@@ -584,28 +695,34 @@ function ResultView({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={ogUrl}
-            alt="会議の値段 シェア用カード"
+            alt={t.result.title}
             className="h-full w-full object-cover"
           />
         </div>
 
         <dl className="grid grid-cols-3 border-t border-neutral-200 text-center">
           <div className="px-3 py-4">
-            <dt className="text-xs text-neutral-500">人数</dt>
+            <dt className="text-xs text-neutral-500">
+              {t.result.breakdownHead}
+            </dt>
             <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-500">
               {headcount}
             </dd>
           </div>
           <div className="px-3 py-4">
-            <dt className="text-xs text-neutral-500">コスト</dt>
+            <dt className="text-xs text-neutral-500">
+              {t.result.breakdownCost}
+            </dt>
             <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-500">
-              {formatYen(hourlyRate)}
+              {money(hourlyRate)}
             </dd>
           </div>
           <div className="px-3 py-4">
-            <dt className="text-xs text-neutral-500">時間</dt>
+            <dt className="text-xs text-neutral-500">
+              {t.result.breakdownTime}
+            </dt>
             <dd className="mt-1 text-base font-semibold tabular-nums text-neutral-500">
-              {formatDuration(elapsedSec)}
+              {hms}
             </dd>
           </div>
         </dl>
@@ -620,36 +737,37 @@ function ResultView({
             track("share_clicked", {
               frequency,
               yearly_amount: yearly,
+              currency,
+              locale,
             })
           }
           className="flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-xl bg-neutral-900 py-4 text-base font-semibold text-white transition hover:bg-neutral-800 active:scale-[0.99]"
         >
           <span className="text-lg font-black">𝕏</span>
-          でシェア
+          {t.button.share}
         </a>
         <button
           type="button"
           onClick={onReset}
           className="min-h-[44px] flex-1 rounded-xl border border-neutral-200 bg-white py-4 text-base font-semibold text-neutral-700 transition hover:border-neutral-400 hover:text-neutral-900 active:scale-[0.99]"
         >
-          もう一度測る
+          {t.button.restart}
         </button>
       </div>
 
-      {/* Share text preview — improves trust + share rate */}
-      <SharePreview text={shareText} />
+      <SharePreview text={shareText} label={t.result.sharePreviewLabel} />
 
       <MtvproCTA />
     </div>
   );
 }
 
-function SharePreview({ text }: { text: string }) {
+function SharePreview({ text, label }: { text: string; label: string }) {
   return (
     <details className="mt-4 rounded-xl border border-neutral-200 bg-neutral-50 px-4 py-3 text-xs text-neutral-600">
       <summary className="flex cursor-pointer select-none items-center gap-2 font-medium text-neutral-500">
         <span aria-hidden>📤</span>
-        シェア時の文面
+        {label}
       </summary>
       <pre className="mt-3 whitespace-pre-wrap break-words font-sans text-xs leading-relaxed text-neutral-700">
         {text}
@@ -659,18 +777,17 @@ function SharePreview({ text }: { text: string }) {
 }
 
 function MtvproCTA() {
+  const { t } = useTranslation();
   return (
     <aside className="mt-12 rounded-2xl border border-neutral-200 p-6 text-center sm:p-8">
       <p className="text-base font-semibold text-neutral-900">
-        Meeting TimeValue Pro 開発中
+        {t.cta.title}
       </p>
-      <p className="mt-4 text-sm leading-relaxed text-neutral-600">
-        このパイロット版は本格版の試作です。
-        <br />
-        正式版では会議の自動測定・集計・改善提案まで全自動化します。
+      <p className="mt-4 whitespace-pre-line text-sm leading-relaxed text-neutral-600">
+        {t.cta.desc}
       </p>
       <p className="mt-5 text-xs font-medium tracking-wide text-orange-600">
-        近日リリース予定
+        {t.cta.comingSoon}
       </p>
     </aside>
   );
