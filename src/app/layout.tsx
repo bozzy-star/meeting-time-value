@@ -15,18 +15,18 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Meeting TimeValue 〜 会議の値段、見えてますか?",
   description:
-    "MTGに参加する人数と平均時給を入れるだけ。リアルタイムで会議のコストを可視化するカウンター。Meeting TimeValue Pro のパイロット版です。",
+    "MTGに参加する人数と平均コストを入れるだけ。リアルタイムで会議のコストを可視化するカウンター。Meeting TimeValue Pro のパイロット版です。",
   openGraph: {
     title: "Meeting TimeValue 〜 会議の値段、見えてますか?",
     description:
-      "あなたの会議、いま¥いくら使ってますか?人数と時給を入れるだけのリアルタイムカウンター。",
+      "あなたの会議、いま¥いくら使ってますか?人数とコストを入れるだけのリアルタイムカウンター。",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Meeting TimeValue 〜 会議の値段、見えてますか?",
     description:
-      "あなたの会議、いま¥いくら使ってますか?人数と時給を入れるだけのリアルタイムカウンター。",
+      "あなたの会議、いま¥いくら使ってますか?人数とコストを入れるだけのリアルタイムカウンター。",
   },
 };
 
@@ -41,7 +41,7 @@ export default function RootLayout({
       lang="ja"
       className={`${notoSansJP.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#0a0a0a] text-zinc-100">
+      <body className="min-h-full flex flex-col bg-white text-neutral-900">
         {children}
         <SiteFooter />
         <Analytics />

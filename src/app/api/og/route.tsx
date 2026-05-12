@@ -33,7 +33,7 @@ function formatDuration(seconds: number): string {
 async function loadFont(text: string): Promise<ArrayBuffer | null> {
   try {
     // Ask Google Fonts for a stylesheet covering exactly the chars we need.
-    const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&text=${encodeURIComponent(
+    const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@600;700&text=${encodeURIComponent(
       text,
     )}`;
     const cssRes = await fetch(cssUrl, {
@@ -78,7 +78,7 @@ export async function GET(req: NextRequest) {
         {
           name: "Noto Sans JP",
           data: fontData,
-          weight: 900 as const,
+          weight: 600 as const,
           style: "normal" as const,
         },
       ]
@@ -92,9 +92,11 @@ export async function GET(req: NextRequest) {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background: "#0a0a0a",
-          color: "#fafafa",
+          background: "#ffffff",
+          color: "#171717",
           padding: "70px 90px",
+          // Subtle inset border to give the card definition on SNS feeds.
+          boxShadow: "inset 0 0 0 1px #e5e5e5",
           fontFamily: "Noto Sans JP, sans-serif",
         }}
       >
@@ -111,7 +113,7 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontSize: 32,
-              color: "#71717a",
+              color: "#737373",
               marginBottom: 20,
               display: "flex",
             }}
@@ -121,9 +123,9 @@ export async function GET(req: NextRequest) {
           <div
             style={{
               fontSize: 200,
-              fontWeight: 900,
+              fontWeight: 600,
               lineHeight: 1,
-              color: "#f97316",
+              color: "#171717",
               letterSpacing: "-0.04em",
               display: "flex",
             }}
@@ -134,15 +136,15 @@ export async function GET(req: NextRequest) {
             style={{
               marginTop: 28,
               fontSize: 36,
-              color: "#a1a1aa",
+              color: "#737373",
               display: "flex",
               gap: 20,
               alignItems: "center",
-              fontWeight: 700,
+              fontWeight: 600,
             }}
           >
             <span>{formatDuration(duration)}</span>
-            <span style={{ color: "#3f3f46" }}>/</span>
+            <span style={{ color: "#d4d4d4" }}>/</span>
             <span>{numberFormatter.format(headcount)}人</span>
           </div>
 
@@ -158,7 +160,7 @@ export async function GET(req: NextRequest) {
               <div
                 style={{
                   fontSize: 26,
-                  color: "#71717a",
+                  color: "#737373",
                   display: "flex",
                   marginBottom: 6,
                 }}
@@ -170,9 +172,9 @@ export async function GET(req: NextRequest) {
               <div
                 style={{
                   fontSize: 84,
-                  fontWeight: 900,
+                  fontWeight: 600,
                   lineHeight: 1,
-                  color: "#fb923c",
+                  color: "#ea580c",
                   letterSpacing: "-0.03em",
                   display: "flex",
                 }}
@@ -190,11 +192,12 @@ export async function GET(req: NextRequest) {
             justifyContent: "space-between",
             alignItems: "center",
             fontSize: 28,
-            color: "#52525b",
+            color: "#a3a3a3",
             paddingTop: 24,
+            borderTop: "1px solid #e5e5e5",
           }}
         >
-          <div style={{ display: "flex", color: "#fafafa", fontWeight: 700 }}>
+          <div style={{ display: "flex", color: "#ea580c", fontWeight: 700 }}>
             Meeting TimeValue
           </div>
           <div style={{ display: "flex" }}>#会議の値段</div>
