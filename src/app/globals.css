@@ -39,24 +39,51 @@ body {
   will-change: transform;
 }
 
-/* +¥XX increase marker: vertical fade-up above the big counter */
-@keyframes fly-up {
+/* Popcorn-burst ¥ particles above the big counter.
+   CSS vars set inline per-particle: --mid-x --dx --peak-y --final-y --rot */
+@keyframes pop-burst {
   0% {
-    transform: translateY(0);
     opacity: 0;
+    transform: translate(calc(-50% + var(--start-x, 0px)), 0) scale(0.5)
+      rotate(0deg);
   }
-  20% {
+  15% {
     opacity: 1;
+    transform: translate(
+        calc(-50% + var(--start-x, 0px) + var(--mid-x, 0px)),
+        var(--peak-y, -90px)
+      )
+      scale(1.1) rotate(calc(var(--rot, 0deg) * 0.5));
   }
   100% {
-    transform: translateY(-48px);
     opacity: 0;
+    transform: translate(
+        calc(-50% + var(--start-x, 0px) + var(--dx, 0px)),
+        var(--final-y, -64px)
+      )
+      scale(0.8) rotate(var(--rot, 0deg));
   }
+}
+.pop-particle {
+  position: absolute;
+  left: 50%;
+  top: 1rem;
+  pointer-events: none;
+  color: #f97316;
+  font-weight: 700;
+  text-shadow: 0 2px 6px rgba(249, 115, 22, 0.35);
+  user-select: none;
+  animation: pop-burst 1.2s cubic-bezier(0.25, 0.8, 0.5, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-float-up {
+  .animate-float-up,
+  .pop-particle {
     animation: none;
+  }
+  .pop-particle {
+    opacity: 0;
   }
 }
 

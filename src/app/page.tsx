@@ -349,7 +349,16 @@ function FormView({
   );
 }
 
-type FloatItem = { id: number; value: number };
+type Pop = {
+  id: number;
+  x: number; // initial horizontal offset (px) within the burst strip
+  midX: number; // peak-time horizontal offset (px)
+  dx: number; // final horizontal offset (px)
+  peakY: number; // peak-time vertical offset (px, negative = up)
+  finalY: number; // final vertical offset (px, negative = up but below peak)
+  rot: number; // final rotation (deg)
+  size: number; // rem
+};
 
 function RunningView({
   amount,
@@ -366,44 +375,71 @@ function RunningView({
   running: boolean;
   onStop: () => void;
 }) {
-  // Floating "+¥XX" markers above the big counter — vertical fade-up.
-  // Max 2 concurrent so they never pile up.
-  const prevRef = useRef(amount);
-  const idRef = useRef(0);
-  const [floats, setFloats] = useState<FloatItem[]>([]);
+  // Popcorn-burst: ¥ marks pop out of the strip above the big counter,
+  // rise on a parabolic arc, then settle slightly lower as they fade.
+  const [pops, setPops] = useState<Pop[]>([]);
+  const seqRef = useRef(0);
 
   useEffect(() => {
-    if (!running) {
-      prevRef.current = amount;
-      return;
-    }
-    const delta = amount - prevRef.current;
-    prevRef.current = amount;
-    if (delta <= 0) return;
-    idRef.current += 1;
-    const id = idRef.current;
-    setFloats((prev) => [...prev.slice(-1), { id, value: delta }]);
-    const t = window.setTimeout(() => {
-      setFloats((prev) => prev.filter((f) => f.id !== id));
-    }, 800);
-    return () => window.clearTimeout(t);
-  }, [amount, running]);
+    if (!running) return;
+    let cancelled = false;
+    let timeoutId: number | null = null;
+
+    const fire = () => {
+      if (cancelled) return;
+      seqRef.current += 1;
+      const id = seqRef.current;
+      const dx = Math.random() * 100 - 50;
+      const p: Pop = {
+        id,
+        x: Math.random() * 300 - 150,
+        dx,
+        midX: dx * 0.5,
+        peakY: -80 - Math.random() * 60,
+        finalY: -56 - Math.random() * 40,
+        rot: Math.random() * 180 - 90,
+        size: 1.5 + Math.random() * 0.7,
+      };
+      setPops((prev) => [...prev.slice(-4), p]);
+      window.setTimeout(() => {
+        setPops((prev) => prev.filter((x) => x.id !== id));
+      }, 1300);
+      const next = 100 + Math.random() * 150;
+      timeoutId = window.setTimeout(fire, next);
+    };
+
+    timeoutId = window.setTimeout(fire, 200);
+    return () => {
+      cancelled = true;
+      if (timeoutId != null) window.clearTimeout(timeoutId);
+    };
+  }, [running]);
 
   return (
     <div className="flex w-full max-w-3xl flex-col items-center text-center">
       <div className="relative">
-        {/* +¥XX layer — floats above the big number, never overlaps it */}
+        {/* Popcorn burst layer — strip directly above the big counter */}
         <div
-          className="pointer-events-none absolute inset-x-0 -top-10 flex justify-center sm:-top-12"
+          className="pointer-events-none absolute inset-x-0 -top-12 h-16 overflow-visible"
           aria-hidden
         >
-          {floats.map((f) => (
+          {pops.map((p) => (
             <span
-              key={f.id}
-              className="absolute select-none text-xl font-semibold tabular-nums text-orange-500/70 sm:text-2xl"
-              style={{ animation: "fly-up 0.7s ease-out forwards" }}
+              key={p.id}
+              className="pop-particle tabular-nums"
+              style={
+                {
+                  fontSize: `${p.size}rem`,
+                  ["--start-x" as string]: `${p.x}px`,
+                  ["--mid-x" as string]: `${p.midX}px`,
+                  ["--dx" as string]: `${p.dx}px`,
+                  ["--peak-y" as string]: `${p.peakY}px`,
+                  ["--final-y" as string]: `${p.finalY}px`,
+                  ["--rot" as string]: `${p.rot}deg`,
+                } as React.CSSProperties
+              }
             >
-              +{formatYen(f.value)}
+              ¥
             </span>
           ))}
         </div>
