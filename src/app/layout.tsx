@@ -15,18 +15,18 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: "Meeting TimeValue 〜 会議の値段、見えてますか?",
   description:
-    "MTGに参加する人数と平均時給を入れるだけ。リアルタイムで¥が増えていく、会議のコストを可視化するカウンター。Meeting TimeValue Pro のパイロット版です。",
+    "MTGに参加する人数と平均時給を入れるだけ。リアルタイムで会議のコストを可視化するカウンター。Meeting TimeValue Pro のパイロット版です。",
   openGraph: {
     title: "Meeting TimeValue 〜 会議の値段、見えてますか?",
     description:
-      "あなたの会議、いま¥いくら燃えてますか?人数と時給を入れるだけのリアルタイムカウンター。",
+      "あなたの会議、いま¥いくら使ってますか?人数と時給を入れるだけのリアルタイムカウンター。",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "Meeting TimeValue 〜 会議の値段、見えてますか?",
     description:
-      "あなたの会議、いま¥いくら燃えてますか?人数と時給を入れるだけのリアルタイムカウンター。",
+      "あなたの会議、いま¥いくら使ってますか?人数と時給を入れるだけのリアルタイムカウンター。",
   },
 };
 

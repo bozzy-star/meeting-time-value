@@ -3,13 +3,12 @@ import type { NextRequest } from "next/server";
 
 export const runtime = "edge";
 
-const yenFormatter = new Intl.NumberFormat("ja-JP", {
-  style: "currency",
-  currency: "JPY",
-  maximumFractionDigits: 0,
-});
-
 const numberFormatter = new Intl.NumberFormat("ja-JP");
+function formatYen(n: number): string {
+  // Use ¥ (U+00A5), not Intl's ￥ (U+FFE5) which is missing from
+  // many web fonts (renders as tofu).
+  return `¥${numberFormatter.format(Math.round(n))}`;
+}
 
 const FREQ_LABEL: Record<string, string> = {
   once: "単発",
@@ -29,6 +28,34 @@ function formatDuration(seconds: number): string {
   return `${m}分${s.toString().padStart(2, "0")}秒`;
 }
 
+// Fetch Noto Sans JP from Google Fonts so Satori has a font that covers
+// Japanese glyphs. Cached at the edge after first request.
+async function loadFont(text: string): Promise<ArrayBuffer | null> {
+  try {
+    // Ask Google Fonts for a stylesheet covering exactly the chars we need.
+    const cssUrl = `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@700;900&text=${encodeURIComponent(
+      text,
+    )}`;
+    const cssRes = await fetch(cssUrl, {
+      headers: {
+        // googleapis returns woff2 if a modern UA is set; ttf for older UAs.
+        // Satori needs ttf/otf/woff. Force a UA that yields ttf.
+        "User-Agent":
+          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_6_8) AppleWebKit/534.30 (KHTML, like Gecko) Version/5.1 Safari/534.30",
+      },
+    });
+    if (!cssRes.ok) return null;
+    const css = await cssRes.text();
+    const match = css.match(/src:\s*url\((https:[^)]+)\)\s*format\(['"]?truetype['"]?\)/);
+    if (!match) return null;
+    const fontRes = await fetch(match[1]);
+    if (!fontRes.ok) return null;
+    return await fontRes.arrayBuffer();
+  } catch {
+    return null;
+  }
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const amount = Math.max(0, Number(searchParams.get("amount") ?? 0) || 0);
@@ -41,6 +68,22 @@ export async function GET(req: NextRequest) {
   const frequencyLabel = FREQ_LABEL[frequencyRaw] ?? "";
   const yearly = Math.max(0, Number(searchParams.get("yearly") ?? 0) || 0);
 
+  // All Japanese text and the ¥ glyph used in this image.
+  const textForFont =
+    "この会議で使った金額MeetingTimeValue人分秒円週月年隔営業日毎単回続けると換算#値段見えますか0123456789¥,";
+
+  const fontData = await loadFont(textForFont);
+  const fonts = fontData
+    ? [
+        {
+          name: "Noto Sans JP",
+          data: fontData,
+          weight: 900 as const,
+          style: "normal" as const,
+        },
+      ]
+    : undefined;
+
   return new ImageResponse(
     (
       <div
@@ -49,108 +92,75 @@ export async function GET(req: NextRequest) {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          background:
-            "radial-gradient(ellipse at top, #1a0a05 0%, #0a0a0a 60%)",
+          background: "#0a0a0a",
           color: "#fafafa",
-          padding: "50px 80px",
-          position: "relative",
+          padding: "70px 90px",
+          fontFamily: "Noto Sans JP, sans-serif",
         }}
       >
-        {/* Top label */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 16,
-            fontSize: 26,
-            color: "#fb923c",
-            letterSpacing: "0.3em",
-            textTransform: "uppercase",
-            fontWeight: 700,
-          }}
-        >
-          <span>Meeting Cost Counter</span>
-        </div>
-
         {/* Centerpiece */}
         <div
           style={{
             display: "flex",
             flex: 1,
             flexDirection: "column",
-            alignItems: "center",
+            alignItems: "flex-start",
             justifyContent: "center",
           }}
         >
           <div
             style={{
-              fontSize: 30,
-              color: "#a1a1aa",
-              marginBottom: 8,
-              display: "flex",
-            }}
-          >
-            この会議で燃えた金額
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 20,
-            }}
-          >
-            <div style={{ fontSize: 80, display: "flex" }}>🔥</div>
-            <div
-              style={{
-                fontSize: 140,
-                fontWeight: 900,
-                lineHeight: 1,
-                background:
-                  "linear-gradient(135deg, #fed7aa 0%, #f97316 45%, #dc2626 100%)",
-                backgroundClip: "text",
-                color: "transparent",
-                letterSpacing: "-0.04em",
-                display: "flex",
-              }}
-            >
-              {yenFormatter.format(amount)}
-            </div>
-          </div>
-          <div
-            style={{
-              marginTop: 18,
               fontSize: 32,
-              color: "#d4d4d8",
+              color: "#71717a",
+              marginBottom: 20,
+              display: "flex",
+            }}
+          >
+            この会議で使った金額
+          </div>
+          <div
+            style={{
+              fontSize: 200,
+              fontWeight: 900,
+              lineHeight: 1,
+              color: "#f97316",
+              letterSpacing: "-0.04em",
+              display: "flex",
+            }}
+          >
+            {formatYen(amount)}
+          </div>
+          <div
+            style={{
+              marginTop: 28,
+              fontSize: 36,
+              color: "#a1a1aa",
               display: "flex",
               gap: 20,
               alignItems: "center",
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             <span>{formatDuration(duration)}</span>
-            <span style={{ color: "#52525b" }}>/</span>
+            <span style={{ color: "#3f3f46" }}>/</span>
             <span>{numberFormatter.format(headcount)}人</span>
           </div>
 
           {yearly > 0 && (
             <div
               style={{
-                marginTop: 28,
+                marginTop: 36,
                 display: "flex",
                 flexDirection: "column",
-                alignItems: "center",
-                padding: "14px 36px",
-                border: "2px solid rgba(249, 115, 22, 0.5)",
-                borderRadius: 18,
-                background: "rgba(127, 29, 29, 0.25)",
+                alignItems: "flex-start",
               }}
             >
               <div
                 style={{
-                  fontSize: 22,
-                  color: "#fdba74",
-                  letterSpacing: "0.1em",
+                  fontSize: 26,
+                  color: "#71717a",
                   display: "flex",
+                  marginBottom: 6,
                 }}
               >
                 {frequencyLabel
@@ -159,18 +169,15 @@ export async function GET(req: NextRequest) {
               </div>
               <div
                 style={{
-                  fontSize: 72,
+                  fontSize: 84,
                   fontWeight: 900,
-                  lineHeight: 1.1,
-                  display: "flex",
-                  background:
-                    "linear-gradient(135deg, #fde68a 0%, #f97316 100%)",
-                  backgroundClip: "text",
-                  color: "transparent",
+                  lineHeight: 1,
+                  color: "#fb923c",
                   letterSpacing: "-0.03em",
+                  display: "flex",
                 }}
               >
-                {yenFormatter.format(yearly)}
+                {formatYen(yearly)}
               </div>
             </div>
           )}
@@ -182,10 +189,9 @@ export async function GET(req: NextRequest) {
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            fontSize: 26,
-            color: "#71717a",
-            borderTop: "1px solid #27272a",
-            paddingTop: 20,
+            fontSize: 28,
+            color: "#52525b",
+            paddingTop: 24,
           }}
         >
           <div style={{ display: "flex", color: "#fafafa", fontWeight: 700 }}>
@@ -198,6 +204,7 @@ export async function GET(req: NextRequest) {
     {
       width: 1200,
       height: 630,
+      ...(fonts ? { fonts } : {}),
     },
   );
 }

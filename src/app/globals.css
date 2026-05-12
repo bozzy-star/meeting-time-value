@@ -22,3 +22,17 @@ body {
 .tabular-nums {
   font-variant-numeric: tabular-nums lining-nums;
 }
+
+@keyframes fly-up {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-56px);
+    opacity: 0;
+  }
+}
