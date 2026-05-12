@@ -23,6 +23,26 @@ body {
   font-variant-numeric: tabular-nums lining-nums;
 }
 
+@keyframes float-up {
+  0%,
+  100% {
+    transform: translate(0, 0) rotate(-2deg);
+  }
+  50% {
+    transform: translate(2px, -4px) rotate(0deg);
+  }
+}
+.animate-float-up {
+  animation: float-up 2.4s ease-in-out infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .animate-float-up {
+    animation: none;
+  }
+}
+
 @keyframes fly-up {
   0% {
     transform: translateY(0);

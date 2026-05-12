@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { track } from "@vercel/analytics";
+import { MoneyFly } from "./_components/MoneyFly";
 
 type View = "form" | "running" | "result";
 
@@ -237,6 +238,10 @@ function FormView({
   return (
     <div className="w-full max-w-xl">
       <header className="mb-20 text-center">
+        <MoneyFly
+          size={60}
+          className="animate-float-up mx-auto mb-6 text-orange-600"
+        />
         <h1 className="text-4xl font-semibold leading-[1.2] tracking-tight text-neutral-900 sm:text-5xl">
           会議の<span className="text-orange-600">値段</span>、
           <br className="sm:hidden" />
@@ -450,8 +455,15 @@ function ResultView({
   return (
     <div className="w-full max-w-2xl">
       <header className="mb-14 text-center">
-        <p className="text-sm text-neutral-500">
-          <span className="tabular-nums">{minutes}</span>分の会議で使った金額
+        <p className="flex items-center justify-center gap-2 text-sm text-neutral-500">
+          <MoneyFly
+            size={26}
+            className="animate-float-up text-orange-600"
+          />
+          <span>
+            <span className="tabular-nums">{minutes}</span>
+            分の会議で使った金額
+          </span>
         </p>
         <h1 className="mt-4 text-5xl font-semibold leading-none tracking-tight text-orange-600 tabular-nums sm:text-6xl">
           {formatYen(amount)}
