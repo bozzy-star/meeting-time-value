@@ -1,6 +1,17 @@
+export type MoneyFlyCurrency = "JPY" | "USD" | "GBP" | "EUR";
+
+const SYMBOL: Record<MoneyFlyCurrency, string> = {
+  JPY: "¥",
+  USD: "$",
+  GBP: "£",
+  EUR: "€",
+};
+
 type Props = {
   size?: number;
   className?: string;
+  /** Currency to render inside the banknote (center + 4 corners). */
+  currency?: MoneyFlyCurrency;
 };
 
 /**
@@ -10,7 +21,12 @@ type Props = {
  *
  * Aspect ratio 96:64 (≈3:2). `size` controls the width.
  */
-export function MoneyFly({ size = 60, className }: Props) {
+export function MoneyFly({
+  size = 60,
+  className,
+  currency = "JPY",
+}: Props) {
+  const sym = SYMBOL[currency];
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -107,17 +123,17 @@ export function MoneyFly({ size = 60, className }: Props) {
         strokeWidth="0.6"
       />
 
-      {/* Corner ¥ accents */}
+      {/* Corner currency accents */}
       <g
         fill="#fb923c"
         fontFamily="system-ui, sans-serif"
         fontWeight="700"
         fontSize="4"
       >
-        <text x="34" y="27">¥</text>
-        <text x="59" y="27">¥</text>
-        <text x="34" y="41">¥</text>
-        <text x="59" y="41">¥</text>
+        <text x="34" y="27">{sym}</text>
+        <text x="59" y="27">{sym}</text>
+        <text x="34" y="41">{sym}</text>
+        <text x="59" y="41">{sym}</text>
       </g>
 
       {/* Center ¥ */}
@@ -130,7 +146,7 @@ export function MoneyFly({ size = 60, className }: Props) {
         fill="#ea580c"
         fontFamily="system-ui, sans-serif"
       >
-        ¥
+        {sym}
       </text>
     </svg>
   );

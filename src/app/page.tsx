@@ -310,10 +310,12 @@ function FormView({
       >
         <MoneyFly
           size={48}
+          currency={currency}
           className="animate-float-up mx-auto mb-6 sm:hidden"
         />
         <MoneyFly
           size={60}
+          currency={currency}
           className="animate-float-up mx-auto mb-6 hidden sm:block"
         />
         <h1 className="text-4xl font-semibold leading-[1.25] tracking-tight text-neutral-900 [text-wrap:balance] sm:text-5xl">
@@ -638,7 +640,7 @@ function ResultView({
     <div className="w-full max-w-2xl">
       <header className="mb-14 text-center">
         <p className="flex items-center justify-center gap-3 text-sm text-neutral-500">
-          <MoneyFly size={26} />
+          <MoneyFly size={26} currency={currency} />
           <span>{t.result.title}</span>
         </p>
         <div className="py-12 md:py-16">
